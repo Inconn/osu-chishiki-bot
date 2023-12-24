@@ -40,13 +40,16 @@ impl TwitchClient
                 ServerMessage::Privmsg(message) => {
                     tokio::spawn(TwitchClient::process_message(self.client.clone(), message, self.gosu_json.clone(), self.bot_config.clone()));
                 },
+                ServerMessage::Join(join) => {
+                    log::info!("Successfully joined channel {} with account {}", join.channel_login, join.user_login);
+                },
                 _ => ()
             }
         }
    }
 
     async fn process_message(client: Arc<TwitchIRCClient<SecureTCPTransport, StaticLoginCredentials>>, message: PrivmsgMessage, _gosu_json: Arc<RwLock<Gosumemory>>, bot_config: Arc<BotConfig>) {
-        log::trace!("got message that reads \"{}\"", message.message_text);
+        log::trace!("got privmsgmessage that reads \"{}\", id: {}", message.message_text, message.message_id);
         if !message.is_action {
             if let Some(query) = message.message_text.strip_prefix(&bot_config.prefix) {
                 let mut queries = query.split_whitespace();
@@ -58,7 +61,7 @@ impl TwitchClient
                     };
                     
                     if !message_to_send.is_empty() {
-                        log::trace!("sending message {}", message_to_send);
+                        log::trace!("replying to message {} with message \"{}\"", message.message_id, message_to_send);
                         let _ = client.say_in_reply_to(&message, message_to_send).await;
                     }
                 }
