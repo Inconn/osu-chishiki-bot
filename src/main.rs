@@ -13,7 +13,10 @@ async fn main() {
 
     let bot_config = Arc::new(bot_config::BotConfig::read_file("gosubot_config.json").await.expect("couldn't read bot config"));
 
-    let gosu_json = Arc::new(RwLock::new(Gosumemory::default()));
+    // temporary: use file to provide gosu_json
+    let gosu_file = tokio::fs::read("gosu_test.json").await.unwrap();
+    let gosu_text = String::from_utf8_lossy(&gosu_file);
+    let gosu_json = Arc::new(RwLock::new(serde_json::from_str(&gosu_text).unwrap()));
 
     // temp commented out since it fails when you're not running gosu
     //let gosu_ws_url = "wss://127.0.0.1:24050/ws".parse().unwrap();
@@ -26,7 +29,7 @@ async fn main() {
     let res = tokio::try_join!(/*gosu_handle,*/ twitch_handle);
 
     match res {
-        Ok((first)) => (),
+        Ok(twitch) => (),
         Err(err) => todo!()
     }
 }

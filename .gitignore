@@ -21,3 +21,5 @@ Cargo.lock
 
 # bot config
 gosubot_config.json
+
+gosu_test.json

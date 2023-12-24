@@ -48,14 +48,25 @@ impl TwitchClient
         }
    }
 
-    async fn process_message(client: Arc<TwitchIRCClient<SecureTCPTransport, StaticLoginCredentials>>, message: PrivmsgMessage, _gosu_json: Arc<RwLock<Gosumemory>>, bot_config: Arc<BotConfig>) {
+    async fn process_message(client: Arc<TwitchIRCClient<SecureTCPTransport, StaticLoginCredentials>>, message: PrivmsgMessage, gosu_json: Arc<RwLock<Gosumemory>>, bot_config: Arc<BotConfig>) {
         log::trace!("got privmsgmessage that reads \"{}\", id: {}", message.message_text, message.message_id);
         if !message.is_action {
             if let Some(query) = message.message_text.strip_prefix(&bot_config.prefix) {
                 let mut queries = query.split_whitespace();
 
                 if let Some(command_name) = queries.next() {
+                    let gosu_json_read = gosu_json.read().await;
                     let message_to_send = match command_name.to_lowercase().as_str() {
+                        "np" => {
+                            format!("osu.ppy.sh/b/{} {} - {} [{}] + {} | {}*",
+                                    gosu_json_read.menu.bm.id,
+                                    gosu_json_read.menu.bm.metadata.artist,
+                                    gosu_json_read.menu.bm.metadata.title,
+                                    gosu_json_read.menu.bm.metadata.difficulty,
+                                    gosu_json_read.menu.mods.str,
+                                    gosu_json_read.menu.bm.stats.full_sr
+                                    )
+                        }
                         "ping" => "Pong!".to_string(),
                         _ => String::new()
                     };
