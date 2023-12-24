@@ -15,6 +15,7 @@ async fn main() {
 
     let gosu_json = Arc::new(RwLock::new(Gosumemory::default()));
 
+    // temp commented out since it fails when you're not running gosu
     //let gosu_ws_url = "wss://127.0.0.1:24050/ws".parse().unwrap();
     //let gosu = gosu::GosuListener::new(gosu_ws_url, gosu_json.clone()).await.unwrap();
     //let gosu_handle = tokio::spawn(gosu.listen());
@@ -24,8 +25,8 @@ async fn main() {
 
     let res = tokio::try_join!(/*gosu_handle,*/ twitch_handle);
 
-    /*match res {
-        Ok((first, second)) => (),
+    match res {
+        Ok((first)) => (),
         Err(err) => todo!()
-    }*/
+    }
 }
