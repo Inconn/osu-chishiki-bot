@@ -58,7 +58,7 @@ impl TwitchClient
                     let gosu_json_read = gosu_json.read().await;
                     let message_to_send = match command_name.to_lowercase().as_str() {
                         "np" => {
-                            format!("osu.ppy.sh/b/{} {} - {} [{}] + {} | {}*",
+                            format!("osu.ppy.sh/b/{} {} - {} [{}] + {} {}★",
                                     gosu_json_read.menu.bm.id,
                                     gosu_json_read.menu.bm.metadata.artist,
                                     gosu_json_read.menu.bm.metadata.title,

@@ -5,8 +5,6 @@ use serde::{Serialize, Deserialize};
 
 use std::collections::HashMap;
 
-use secrecy::SecretString;
-
 #[derive(Serialize, Deserialize)]
 pub struct BotConfig {
     pub name: String,
