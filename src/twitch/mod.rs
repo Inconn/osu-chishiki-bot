@@ -12,33 +12,33 @@ use super::bot_config::BotConfig;
 
 //mod auth;
 
-pub struct TwitchClient
+pub struct Client
 {
     client: Arc<TwitchIRCClient<SecureTCPTransport, StaticLoginCredentials>>,
     twitch_rx: UnboundedReceiver<ServerMessage>,
-    gosu_json: Arc<RwLock<Gosumemory>>,
+    gosu_json: Arc<RwLock<Box<Gosumemory>>>,
     bot_config: Arc<BotConfig>
 }
 
-impl TwitchClient
+impl Client
 {
-    pub fn new(bot_config: Arc<BotConfig>, gosu_json: Arc<RwLock<Gosumemory>>) -> TwitchClient {
+    pub fn new(bot_config: Arc<BotConfig>, gosu_json: Arc<RwLock<Box<Gosumemory>>>) -> Self {
         let config = ClientConfig::new_simple(
-            StaticLoginCredentials::new(bot_config.name.to_owned(), Some(bot_config.token.trim_start_matches("oauth:").to_owned())));
+            StaticLoginCredentials::new(bot_config.name.clone(), Some(bot_config.token.trim_start_matches("oauth:").to_string())));
 
         let (twitch_rx, client) =
             TwitchIRCClient::<SecureTCPTransport, StaticLoginCredentials>::new(config);
 
-        client.join(bot_config.channel.to_owned()).unwrap();
-        TwitchClient { client: Arc::new(client), twitch_rx, bot_config, gosu_json }
+        client.join(bot_config.channel.clone()).unwrap();
+        Self { client: Arc::new(client), twitch_rx, bot_config, gosu_json }
     }
 
-    pub async fn listen(mut self) {
+    pub async fn listen(mut self) -> Result<(), String> {
         while let Some(message) = self.twitch_rx.recv().await {
             log::trace!("got message from twitch!");
             match message {
                 ServerMessage::Privmsg(message) => {
-                    tokio::spawn(TwitchClient::process_message(self.client.clone(), message, self.gosu_json.clone(), self.bot_config.clone()));
+                    tokio::spawn(Self::process_message(self.client.clone(), message, self.gosu_json.clone(), self.bot_config.clone()));
                 },
                 ServerMessage::Join(join) => {
                     log::info!("Successfully joined channel {} with account {}", join.channel_login, join.user_login);
@@ -46,18 +46,19 @@ impl TwitchClient
                 _ => ()
             }
         }
+        Ok(())
    }
 
-    async fn process_message(client: Arc<TwitchIRCClient<SecureTCPTransport, StaticLoginCredentials>>, message: PrivmsgMessage, gosu_json: Arc<RwLock<Gosumemory>>, bot_config: Arc<BotConfig>) {
+    async fn process_message(client: Arc<TwitchIRCClient<SecureTCPTransport, StaticLoginCredentials>>, message: PrivmsgMessage, gosu_json: Arc<RwLock<Box<Gosumemory>>>, bot_config: Arc<BotConfig>) {
         log::trace!("got privmsgmessage that reads \"{}\", id: {}", message.message_text, message.message_id);
         if !message.is_action {
             if let Some(query) = message.message_text.strip_prefix(&bot_config.prefix) {
                 let mut queries = query.split_whitespace();
 
                 if let Some(command_name) = queries.next() {
-                    let gosu_json_read = gosu_json.read().await;
                     let message_to_send = match command_name.to_lowercase().as_str() {
                         "np" => {
+                            let gosu_json_read = gosu_json.read().await;
                             format!("osu.ppy.sh/b/{} {} - {} [{}] + {} {}★",
                                     gosu_json_read.menu.bm.id,
                                     gosu_json_read.menu.bm.metadata.artist,

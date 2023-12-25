@@ -1,4 +1,3 @@
-use std::path::Path;
 use tokio::fs;
 
 use serde::{Serialize, Deserialize};
@@ -15,7 +14,7 @@ pub struct BotConfig {
 }
 
 impl BotConfig {
-    pub async fn read_file(path: impl AsRef<Path>) -> Result<Self, Error> {
+    pub async fn read_file(path: &str) -> Result<Self, Error> {
         let config_file = fs::read(path).await?;
         let config_text = String::from_utf8_lossy(&config_file);
         Ok(serde_json::from_str(&config_text)?)
