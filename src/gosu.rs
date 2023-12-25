@@ -40,7 +40,7 @@ impl GosuListener
                         *gosu_json_write = Gosumemory::deserialize(self.temp_gosu_json).unwrap();
                         self.temp_gosu_json = Value::Null;
                     },
-                    _ => ()
+                    Err(_e) => ()
                 }
             }
         }

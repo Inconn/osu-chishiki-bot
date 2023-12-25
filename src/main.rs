@@ -31,7 +31,7 @@ async fn main() {
     let res = tokio::try_join!(gosu_handle, twitch_handle);
 
     match res {
-        Ok((gosu, twitch)) => (),
-        Err(err) => todo!()
+        Ok((_gosu, _twitch)) => (),
+        Err(_err) => todo!()
     }
 }

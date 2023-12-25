@@ -3,7 +3,7 @@ use tokio::fs;
 
 use serde::{Serialize, Deserialize};
 
-use std::collections::HashMap;
+//use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize)]
 pub struct BotConfig {
@@ -31,8 +31,8 @@ pub enum Error {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Self::IoError(e) => write!(f, "Failed to read bot config due to I/O error."),
-            Self::ParseError(e) => write!(f, "Failed to read bot config due to parsing error.")
+            Self::IoError(e) => write!(f, "Failed to read bot config due to I/O error: {e}"),
+            Self::ParseError(e) => write!(f, "Failed to read bot config due to parsing error: {e}")
         }
     }
 }
