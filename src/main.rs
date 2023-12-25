@@ -36,12 +36,13 @@ async fn main() {
 
 async fn flatten<T, E>(handle: tokio::task::JoinHandle<Result<T, E>>) -> Result<T, HandleError> 
 where
-    E: Into<HandleError>
+    T: Send,
+    E: Into<HandleError> + Send
 {
     match handle.await {
         Ok(Ok(res)) => Ok(res),
         Ok(Err(err)) => Err(err.into()),
-        Err(_err) => panic!()
+        Err(err) => panic!("{err}")
     }
 }
 

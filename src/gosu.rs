@@ -1,7 +1,7 @@
 use async_tungstenite::tokio::{connect_async, ConnectStream};
 use async_tungstenite::WebSocketStream;
 use async_tungstenite::tungstenite::Message;
-use std::time::{Duration, SystemTime};
+use tokio::time::{Duration, Instant};
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -15,7 +15,7 @@ pub struct Listener
 {
     temp_gosu_json: Option<Box<Gosumemory>>,
     gosu_json: Arc<RwLock<Box<Gosumemory>>>,
-    last_json_recieved: SystemTime,
+    last_json_recieved: Instant,
     ws: WebSocketStream<ConnectStream>
 }
 
@@ -26,7 +26,7 @@ impl Listener
         Ok(Self { 
             temp_gosu_json: None,
             gosu_json,
-            last_json_recieved: SystemTime::now(),
+            last_json_recieved: Instant::now(),
             ws,
         })
     }
@@ -37,29 +37,26 @@ impl Listener
                 if let Message::Text(gosu_text) = message? { 
                     log::trace!("Recieved text from websocket.");
                     self.temp_gosu_json = Some(serde_json::from_str(&gosu_text)?);
-                    self.last_json_recieved = SystemTime::now();
+                    self.last_json_recieved = Instant::now();
                 }
             }
 
-            if let Some(gosu_json) = self.temp_gosu_json.take() {
+            if self.temp_gosu_json.is_some() {
                 let gosu_json_write_result = self.gosu_json.try_write();
 
                 match gosu_json_write_result {
                     Ok(mut gosu_json_write) => {
-                        // afaik this shouldn't fail. hopefully
-                        *gosu_json_write = gosu_json;
+                        // afaik this shouldn't fail.
+                        *gosu_json_write = self.temp_gosu_json.take().unwrap();
                     },
-                    Err(_e) => {
-                        // we failed to get a write lock, put value back
-                        // there's gotta be a better way but i'm not figuring it out rn
-                        self.temp_gosu_json = Some(gosu_json);
-                    }
+                    Err(_e) => () // at some point prob should check for poisoned or something
                 }
             }
 
-            log::trace!("{:?}", SystemTime::now().duration_since(self.last_json_recieved).unwrap());
-            if SystemTime::now().duration_since(self.last_json_recieved).unwrap() >= Duration::from_secs(30) {
-                log::error!("It's been 30 seconds since we last recieved data from the gosumemory websocket, assuming it timed out for some reason.");
+            let since_last_json = Instant::now().duration_since(self.last_json_recieved);
+            log::trace!("{since_last_json:?}");
+            if since_last_json >= Duration::from_secs(30) {
+                log::error!("It's been {since_last_json:?} since we last recieved data from the gosumemory websocket, assuming it timed out for some reason.");
                 return Err(Error::TimedOut);
             }
         }
