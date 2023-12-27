@@ -68,6 +68,24 @@ impl Client
                                     gosu_json_read.menu.bm.stats.full_sr
                                     )
                         }
+                        "nppp" => {
+                            let gosu_json_read = gosu_json.read().await;
+                            format!("osu.ppy.sh/b/{} {} - {} [{}] + {} {}★ | 100%: {}pp | 99%: {}pp | 98%: {}pp | 97%: {}pp | 96%: {}pp | 95%: {}pp",
+                                    gosu_json_read.menu.bm.id,
+                                    gosu_json_read.menu.bm.metadata.artist,
+                                    gosu_json_read.menu.bm.metadata.title,
+                                    gosu_json_read.menu.bm.metadata.difficulty,
+                                    gosu_json_read.menu.mods.str,
+                                    gosu_json_read.menu.bm.stats.full_sr,
+                                    gosu_json_read.menu.pp.n100,
+                                    gosu_json_read.menu.pp.n99,
+                                    gosu_json_read.menu.pp.n98,
+                                    gosu_json_read.menu.pp.n97,
+                                    gosu_json_read.menu.pp.n96,
+                                    gosu_json_read.menu.pp.n95
+                                    )
+
+                        }
                         "ping" => "Pong!".to_string(),
                         _ => String::new()
                     };
