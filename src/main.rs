@@ -6,6 +6,7 @@ mod gosu;
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use gosumemory_helper::Gosumemory;
 
 #[tokio::main]
 async fn main() {
@@ -18,7 +19,7 @@ async fn main() {
     //let gosu_text = String::from_utf8_lossy(&gosu_file);
     //let gosu_json = Arc::new(RwLock::new(serde_json::from_str(&gosu_text).unwrap()));
     
-    let gosu_json = Arc::new(RwLock::new(Box::default()));
+    let gosu_json = Arc::new(RwLock::new(Gosumemory::default()));
 
     let gosu_ws_url = "ws://127.0.0.1:24050/ws".parse().unwrap();
     let gosu = gosu::Listener::new(gosu_ws_url, gosu_json.clone()).await

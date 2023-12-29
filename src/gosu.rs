@@ -13,15 +13,15 @@ use gosumemory_helper::Gosumemory;
 /// up-to-date.
 pub struct Listener
 {
-    temp_gosu_json: Option<Box<Gosumemory>>,
-    gosu_json: Arc<RwLock<Box<Gosumemory>>>,
+    temp_gosu_json: Option<Gosumemory>,
+    gosu_json: Arc<RwLock<Gosumemory>>,
     last_json_recieved: Instant,
     ws: WebSocketStream<ConnectStream>
 }
 
 impl Listener 
 {
-    pub async fn new(ip: url::Url, gosu_json: Arc<RwLock<Box<Gosumemory>>>) -> Result<Self, async_tungstenite::tungstenite::Error> {
+    pub async fn new(ip: url::Url, gosu_json: Arc<RwLock<Gosumemory>>) -> Result<Self, async_tungstenite::tungstenite::Error> {
         let (ws, _response) = connect_async(ip).await?;
         Ok(Self { 
             temp_gosu_json: None,
