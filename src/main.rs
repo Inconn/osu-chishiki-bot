@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 mod twitch;
 mod bot_config;
 mod gosu;
