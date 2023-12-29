@@ -5,7 +5,7 @@ use tokio::time::{Duration, Instant};
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use futures::stream::StreamExt;
+use futures_util::stream::StreamExt;
 
 use gosumemory_helper::Gosumemory;
 
