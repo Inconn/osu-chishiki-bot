@@ -9,11 +9,11 @@ use tokio::sync::RwLock;
 use gosumemory_helper::Gosumemory;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), HandleError> {
     env_logger::init();
 
     let bot_config = Arc::new(bot_config::BotConfig::read_file("gosubot_config.json").await.expect("couldn't read bot config"));
-
+    
     // temporary: use file to provide gosu_json
     //let gosu_file = tokio::fs::read("gosu_test.json").await.unwrap();
     //let gosu_text = String::from_utf8_lossy(&gosu_file);
@@ -32,8 +32,8 @@ async fn main() {
     let res = tokio::try_join!(flatten(gosu_handle), flatten(twitch_handle));
 
     match res {
-        Ok((_gosu, _twitch)) => (),
-        Err(e) => panic!("one branch failed: {e:?}")
+        Ok((_gosu, _twitch)) => Ok(()),
+        Err(err) => Err(err)
     }
 }
 
