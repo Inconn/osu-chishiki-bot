@@ -16,12 +16,20 @@ pub struct TwitchConfig {
     pub channel: String
 }
 
+/// this is the only way you can set default values in serde
+fn default_server() -> String {
+    "irc.ppy.sh".to_string()
+}
+
 #[derive(Debug, Deserialize)]
 pub struct OsuConfig {
+    #[serde(default)]
     pub beatmap_requests: bool,
+    #[serde(default = "default_server")]
     pub server: String,
-    pub name: String,
-    pub password: String,
+    pub name: Option<String>,
+    pub player: Option<String>,
+    pub password: Option<String>,
 }
 
 impl BotConfig {
