@@ -93,6 +93,30 @@ impl Client
                                     gosu_json_read.menu.pp.n95
                                     )
                         }
+                        "rq" | "req" | "request" => {
+                            if let Some(ref bancho_client) =  *bancho_client {
+                                let gosu_json_read = gosu_json.read().await;
+                                let beatmap_id = queries.next().unwrap();
+                                // this is wrong, TODO: Fix this
+                                // requires using osu api
+                                let beatmap_name = format!("{} - {} [{}] {}★",
+                                                           gosu_json_read.menu.bm.metadata.artist,
+                                                           gosu_json_read.menu.bm.metadata.title,
+                                                           gosu_json_read.menu.bm.metadata.difficulty,
+                                                           gosu_json_read.menu.bm.stats.full_sr
+                                                           );
+                                let _ = bancho_client.send_request(
+                                    beatmap_id,
+                                    &beatmap_name,
+                                    queries.next().unwrap_or_default()
+                                    ).await;
+                                
+                                format!("Added request {beatmap_name} osu.ppy.sh/b/{}", gosu_json_read.menu.bm.id)
+                            }
+                            else {
+                                String::new()
+                            }
+                        }
                         "ping" => "Pong!".to_string(),
                         _ => String::new()
                     };
