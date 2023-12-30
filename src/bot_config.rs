@@ -5,7 +5,7 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 pub struct BotConfig {
     pub twitch: TwitchConfig,
-    pub osu: OsuConfig
+    pub osu: Option<OsuConfig>
 }
 
 #[derive(Debug, Deserialize)]
