@@ -22,7 +22,7 @@ async fn main() -> Result<(), HandleError> {
     
     let gosu_json = Arc::new(RwLock::new(Gosumemory::default()));
 
-    let gosu_ws_url = "ws://127.0.0.1:24050/ws".parse().unwrap();
+    let gosu_ws_url = "ws://127.0.0.1:9001/ws".parse().unwrap();
     let gosu = gosu::Listener::new(gosu_ws_url, gosu_json.clone()).await
         .expect("Failed to connect to the gosumemory websocket. Please make sure both gosumemory AND osu! are open.");
     let gosu_handle = tokio::spawn(gosu.listen());
