@@ -2,13 +2,10 @@ use tokio::fs;
 
 use serde::Deserialize;
 
-//use std::collections::HashMap;
-
 #[derive(Debug, Deserialize)]
 pub struct BotConfig {
     pub twitch: TwitchConfig,
     pub osu: OsuConfig
-//    pub commands: HashMap<String, String>
 }
 
 #[derive(Debug, Deserialize)]
