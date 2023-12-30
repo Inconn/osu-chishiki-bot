@@ -24,12 +24,12 @@ impl Client
 {
     pub fn new(bot_config: Arc<BotConfig>, gosu_json: Arc<RwLock<Gosumemory>>) -> Self {
         let config = ClientConfig::new_simple(
-            StaticLoginCredentials::new(bot_config.name.clone(), Some(bot_config.token.trim_start_matches("oauth:").to_string())));
+            StaticLoginCredentials::new(bot_config.twitch.name.clone(), Some(bot_config.twitch.token.trim_start_matches("oauth:").to_string())));
 
         let (twitch_rx, client) =
             TwitchIRCClient::<SecureTCPTransport, StaticLoginCredentials>::new(config);
 
-        client.join(bot_config.channel.clone()).unwrap();
+        client.join(bot_config.twitch.channel.clone()).unwrap();
         Self { client: Arc::new(client), twitch_rx, bot_config, gosu_json }
     }
 
@@ -52,7 +52,7 @@ impl Client
     async fn process_message(client: Arc<TwitchIRCClient<SecureTCPTransport, StaticLoginCredentials>>, message: PrivmsgMessage, gosu_json: Arc<RwLock<Gosumemory>>, bot_config: Arc<BotConfig>) {
         log::trace!("got privmsgmessage that reads \"{}\", id: {}", message.message_text, message.message_id);
         if !message.is_action {
-            if let Some(query) = message.message_text.strip_prefix(&bot_config.prefix) {
+            if let Some(query) = message.message_text.strip_prefix(&bot_config.twitch.prefix) {
                 let mut queries = query.split_whitespace();
 
                 if let Some(command_name) = queries.next() {

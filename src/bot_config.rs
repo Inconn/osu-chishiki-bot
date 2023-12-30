@@ -1,30 +1,44 @@
 use tokio::fs;
 
-use serde::{Serialize, Deserialize};
+use serde::Deserialize;
 
 //use std::collections::HashMap;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct BotConfig {
-    pub name: String,
-    pub token: String, // TODO: make it so token is in better place?
-    pub prefix: String,
-    pub channel: String,
+    pub twitch: TwitchConfig,
+    pub osu: OsuConfig
 //    pub commands: HashMap<String, String>
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TwitchConfig {
+    pub name: String,
+    pub token: String,
+    pub prefix: String,
+    pub channel: String
+}
+
+#[derive(Debug, Deserialize)]
+pub struct OsuConfig {
+    pub beatmap_requests: bool,
+    pub server: String,
+    pub name: String,
+    pub password: String,
 }
 
 impl BotConfig {
     pub async fn read_file(path: &str) -> Result<Self, Error> {
         let config_file = fs::read(path).await?;
         let config_text = String::from_utf8_lossy(&config_file);
-        Ok(serde_json::from_str(&config_text)?)
+        Ok(toml::de::from_str(&config_text)?)
     }
 }
 
 #[derive(Debug)]
 pub enum Error {
     IoError(std::io::Error),
-    ParseError(serde_json::Error)
+    ParseError(toml::de::Error)
 }
 
 impl std::fmt::Display for Error {
@@ -51,8 +65,8 @@ impl From<std::io::Error> for Error {
     }
 }
 
-impl From<serde_json::Error> for Error {
-    fn from(item: serde_json::Error) -> Self {
+impl From<toml::de::Error> for Error {
+    fn from(item: toml::de::Error) -> Self {
         Self::ParseError(item)
     }
 }

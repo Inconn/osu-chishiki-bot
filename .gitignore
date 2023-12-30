@@ -16,6 +16,5 @@ target/
 
 
 # bot config
-gosubot_config.json
-
+bot_config.toml
 gosu_test.json

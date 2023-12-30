@@ -12,7 +12,7 @@ use gosumemory_helper::Gosumemory;
 async fn main() -> Result<(), HandleError> {
     env_logger::init();
 
-    let bot_config = Arc::new(bot_config::BotConfig::read_file("gosubot_config.json").await.expect("couldn't read bot config"));
+    let bot_config = Arc::new(bot_config::BotConfig::read_file("bot_config.toml").await.expect("couldn't read bot config"));
     
     // temporary: use file to provide gosu_json
     //let gosu_file = tokio::fs::read("gosu_test.json").await.unwrap();
