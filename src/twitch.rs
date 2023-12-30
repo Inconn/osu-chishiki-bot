@@ -65,7 +65,7 @@ impl Client
 
                 if let Some(command_name) = queries.next() {
                     let message_to_send = match command_name.to_lowercase().as_str() {
-                        "np" => {
+                        "np" | "nowplaying" | "nowplay" | "map" => {
                             let gosu_json_read = gosu_json.read().await;
                             format!("osu.ppy.sh/b/{} {} - {} [{}] + {} {}★",
                                     gosu_json_read.menu.bm.id,
@@ -76,7 +76,7 @@ impl Client
                                     gosu_json_read.menu.bm.stats.full_sr
                                     )
                         }
-                        "nppp" => {
+                        "nppp" | "nowplayingpp" | "nowplaypp" | "mappp" => {
                             let gosu_json_read = gosu_json.read().await;
                             format!("osu.ppy.sh/b/{} {} - {} [{}] + {} {}★ | 100%: {}pp | 99%: {}pp | 98%: {}pp | 97%: {}pp | 96%: {}pp | 95%: {}pp",
                                     gosu_json_read.menu.bm.id,
