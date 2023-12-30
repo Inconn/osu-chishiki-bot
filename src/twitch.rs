@@ -18,13 +18,13 @@ pub struct Client
     client: Arc<TwitchIRCClient<SecureTCPTransport, StaticLoginCredentials>>,
     bancho_client: Arc<Option<bancho::IrcClient>>,
     twitch_rx: UnboundedReceiver<ServerMessage>,
-    gosu_json: Arc<RwLock<Gosumemory>>,
+    rosu_json: Arc<RwLock<Gosumemory>>,
     twitch_config: Arc<TwitchConfig>
 }
 
 impl Client
 {
-    pub fn new(twitch_config: TwitchConfig, gosu_json: Arc<RwLock<Gosumemory>>, bancho_client: Option<bancho::IrcClient>) -> Self {
+    pub fn new(twitch_config: TwitchConfig, rosu_json: Arc<RwLock<Gosumemory>>, bancho_client: Option<bancho::IrcClient>) -> Self {
         let config = ClientConfig::new_simple(
             StaticLoginCredentials::new(twitch_config.name.clone(), Some(twitch_config.token.trim_start_matches("oauth:").to_string())));
 
@@ -37,7 +37,7 @@ impl Client
             bancho_client: Arc::new(bancho_client),
             twitch_rx,
             twitch_config: Arc::new(twitch_config),
-            gosu_json
+            rosu_json
         }
     }
 
@@ -46,7 +46,7 @@ impl Client
             log::trace!("got message from twitch!");
             match message {
                 ServerMessage::Privmsg(message) => {
-                    tokio::spawn(Self::process_message(self.client.clone(), message, self.gosu_json.clone(), self.bot_config.clone()));
+                    tokio::spawn(Self::process_message(self.client.clone(), self.bancho_client.clone(), message, self.rosu_json.clone(), self.twitch_config.clone()));
                 },
                 ServerMessage::Join(join) => {
                     log::info!("Successfully joined channel {} with account {}", join.channel_login, join.user_login);
@@ -57,7 +57,7 @@ impl Client
         Ok(())
    }
 
-    async fn process_message(client: Arc<TwitchIRCClient<SecureTCPTransport, StaticLoginCredentials>>, bancho_client: Arc<Option<bancho::IrcClient>>, message: PrivmsgMessage, gosu_json: Arc<RwLock<Gosumemory>>, twitch_config: Arc<TwitchConfig>) {
+    async fn process_message(client: Arc<TwitchIRCClient<SecureTCPTransport, StaticLoginCredentials>>, bancho_client: Arc<Option<bancho::IrcClient>>, message: PrivmsgMessage, rosu_json: Arc<RwLock<Gosumemory>>, twitch_config: Arc<TwitchConfig>) {
         log::trace!("got privmsgmessage that reads \"{}\", id: {}", message.message_text, message.message_id);
         if !message.is_action {
             if let Some(query) = message.message_text.strip_prefix(&twitch_config.prefix) {
@@ -66,44 +66,44 @@ impl Client
                 if let Some(command_name) = queries.next() {
                     let message_to_send = match command_name.to_lowercase().as_str() {
                         "np" | "nowplaying" | "nowplay" | "map" => {
-                            let gosu_json_read = gosu_json.read().await;
+                            let rosu_json_read = rosu_json.read().await;
                             format!("osu.ppy.sh/b/{} {} - {} [{}] + {} {}★",
-                                    gosu_json_read.menu.bm.id,
-                                    gosu_json_read.menu.bm.metadata.artist,
-                                    gosu_json_read.menu.bm.metadata.title,
-                                    gosu_json_read.menu.bm.metadata.difficulty,
-                                    gosu_json_read.menu.mods.str,
-                                    gosu_json_read.menu.bm.stats.full_sr
+                                    rosu_json_read.menu.bm.id,
+                                    rosu_json_read.menu.bm.metadata.artist,
+                                    rosu_json_read.menu.bm.metadata.title,
+                                    rosu_json_read.menu.bm.metadata.difficulty,
+                                    rosu_json_read.menu.mods.str,
+                                    rosu_json_read.menu.bm.stats.full_sr
                                     )
                         }
                         "nppp" | "nowplayingpp" | "nowplaypp" | "mappp" => {
-                            let gosu_json_read = gosu_json.read().await;
+                            let rosu_json_read = rosu_json.read().await;
                             format!("osu.ppy.sh/b/{} {} - {} [{}] + {} {}★ | 100%: {}pp | 99%: {}pp | 98%: {}pp | 97%: {}pp | 96%: {}pp | 95%: {}pp",
-                                    gosu_json_read.menu.bm.id,
-                                    gosu_json_read.menu.bm.metadata.artist,
-                                    gosu_json_read.menu.bm.metadata.title,
-                                    gosu_json_read.menu.bm.metadata.difficulty,
-                                    gosu_json_read.menu.mods.str,
-                                    gosu_json_read.menu.bm.stats.full_sr,
-                                    gosu_json_read.menu.pp.n100,
-                                    gosu_json_read.menu.pp.n99,
-                                    gosu_json_read.menu.pp.n98,
-                                    gosu_json_read.menu.pp.n97,
-                                    gosu_json_read.menu.pp.n96,
-                                    gosu_json_read.menu.pp.n95
+                                    rosu_json_read.menu.bm.id,
+                                    rosu_json_read.menu.bm.metadata.artist,
+                                    rosu_json_read.menu.bm.metadata.title,
+                                    rosu_json_read.menu.bm.metadata.difficulty,
+                                    rosu_json_read.menu.mods.str,
+                                    rosu_json_read.menu.bm.stats.full_sr,
+                                    rosu_json_read.menu.pp.n100,
+                                    rosu_json_read.menu.pp.n99,
+                                    rosu_json_read.menu.pp.n98,
+                                    rosu_json_read.menu.pp.n97,
+                                    rosu_json_read.menu.pp.n96,
+                                    rosu_json_read.menu.pp.n95
                                     )
                         }
                         "rq" | "req" | "request" => {
                             if let Some(ref bancho_client) =  *bancho_client {
-                                let gosu_json_read = gosu_json.read().await;
+                                let rosu_json_read = rosu_json.read().await;
                                 let beatmap_id = queries.next().unwrap();
                                 // this is wrong, TODO: Fix this
                                 // requires using osu api
                                 let beatmap_name = format!("{} - {} [{}] {}★",
-                                                           gosu_json_read.menu.bm.metadata.artist,
-                                                           gosu_json_read.menu.bm.metadata.title,
-                                                           gosu_json_read.menu.bm.metadata.difficulty,
-                                                           gosu_json_read.menu.bm.stats.full_sr
+                                                           rosu_json_read.menu.bm.metadata.artist,
+                                                           rosu_json_read.menu.bm.metadata.title,
+                                                           rosu_json_read.menu.bm.metadata.difficulty,
+                                                           rosu_json_read.menu.bm.stats.full_sr
                                                            );
                                 let _ = bancho_client.send_request(
                                     beatmap_id,
@@ -111,7 +111,7 @@ impl Client
                                     queries.next().unwrap_or_default()
                                     ).await;
                                 
-                                format!("Added request {beatmap_name} osu.ppy.sh/b/{}", gosu_json_read.menu.bm.id)
+                                format!("Added request {beatmap_name} osu.ppy.sh/b/{}", rosu_json_read.menu.bm.id)
                             }
                             else {
                                 String::new()

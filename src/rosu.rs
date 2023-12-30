@@ -13,19 +13,19 @@ use gosumemory_helper::Gosumemory;
 /// up-to-date.
 pub struct Listener
 {
-    temp_gosu_json: Option<Gosumemory>,
-    gosu_json: Arc<RwLock<Gosumemory>>,
+    temp_rosu_json: Option<Gosumemory>,
+    rosu_json: Arc<RwLock<Gosumemory>>,
     last_json_recieved: Instant,
     ws: WebSocketStream<ConnectStream>
 }
 
 impl Listener 
 {
-    pub async fn new(ip: url::Url, gosu_json: Arc<RwLock<Gosumemory>>) -> Result<Self, async_tungstenite::tungstenite::Error> {
+    pub async fn new(ip: url::Url, rosu_json: Arc<RwLock<Gosumemory>>) -> Result<Self, async_tungstenite::tungstenite::Error> {
         let (ws, _response) = connect_async(ip).await?;
         Ok(Self { 
-            temp_gosu_json: None,
-            gosu_json,
+            temp_rosu_json: None,
+            rosu_json,
             last_json_recieved: Instant::now(),
             ws,
         })
@@ -34,20 +34,20 @@ impl Listener
     pub async fn listen(mut self) -> Result<(), Error> {
         loop {
             if let Ok(Some(message)) = tokio::time::timeout(Duration::from_millis(500), self.ws.next()).await {
-                if let Message::Text(gosu_text) = message? { 
+                if let Message::Text(rosu_text) = message? { 
                     log::trace!("Recieved text from websocket.");
-                    self.temp_gosu_json = Some(serde_json::from_str(&gosu_text)?);
+                    self.temp_rosu_json = Some(serde_json::from_str(&rosu_text)?);
                     self.last_json_recieved = Instant::now();
                 }
             }
 
-            if self.temp_gosu_json.is_some() {
-                let gosu_json_write_result = self.gosu_json.try_write();
+            if self.temp_rosu_json.is_some() {
+                let rosu_json_write_result = self.rosu_json.try_write();
 
-                match gosu_json_write_result {
-                    Ok(mut gosu_json_write) => {
+                match rosu_json_write_result {
+                    Ok(mut rosu_json_write) => {
                         // afaik this shouldn't fail.
-                        *gosu_json_write = self.temp_gosu_json.take().unwrap();
+                        *rosu_json_write = self.temp_rosu_json.take().unwrap();
                     },
                     Err(_e) => () // at some point prob should check for poisoned or something
                 }
