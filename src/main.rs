@@ -1,8 +1,9 @@
 #![forbid(unsafe_code)]
 
-mod twitch;
+mod bancho;
 mod bot_config;
 mod gosu;
+mod twitch;
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -12,7 +13,7 @@ use gosumemory_helper::Gosumemory;
 async fn main() -> Result<(), HandleError> {
     env_logger::init();
 
-    let bot_config = Arc::new(bot_config::BotConfig::read_file("bot_config.toml").await.expect("couldn't read bot config"));
+    let bot_config = bot_config::BotConfig::read_file("bot_config.toml").await.expect("couldn't read bot config");
     
     // temporary: use file to provide gosu_json
     //let gosu_file = tokio::fs::read("gosu_test.json").await.unwrap();
@@ -26,7 +27,17 @@ async fn main() -> Result<(), HandleError> {
         .expect("Failed to connect to the gosumemory websocket. Please make sure both gosumemory AND osu! are open.");
     let gosu_handle = tokio::spawn(gosu.listen());
 
-    let twitch_client = twitch::Client::new(bot_config, gosu_json);
+    // note: OsuConfig in the BotConfig struct is moved here.
+    let bancho_client: Option<bancho::IrcClient> = bancho::IrcClient::new(bot_config.osu)
+        .await.map_err(|err: bancho::Error| {
+            match err {
+                bancho::Error::IrcError(_) => return Err(err),
+                _ => Err::<bancho::IrcClient, bancho::Error>(err)
+            }
+        }).map(|client: bancho::IrcClient| Some(client))
+        .unwrap_or_default();
+
+    let twitch_client = twitch::Client::new(bot_config.twitch, gosu_json, bancho_client);
     let twitch_handle = tokio::spawn(twitch_client.listen());
 
     let res = tokio::try_join!(flatten(gosu_handle), flatten(twitch_handle));
@@ -52,12 +63,19 @@ where
 #[derive(Debug)]
 enum HandleError {
     Gosu(gosu::Error),
+    BanchoIrc(bancho::Error),
     Twitch(String)
 }
 
 impl From<gosu::Error> for HandleError {
     fn from(item: gosu::Error) -> Self {
         Self::Gosu(item)
+    }
+}
+
+impl From<bancho::Error> for HandleError {
+    fn from(item: bancho::Error) -> Self {
+        Self::BanchoIrc(item)
     }
 }
 
