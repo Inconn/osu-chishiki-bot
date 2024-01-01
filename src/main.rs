@@ -5,9 +5,10 @@ mod bot_config;
 mod rosu;
 mod twitch;
 
+use rosu::structs::RosuValues;
+
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use gosumemory_helper::Gosumemory;
 
 #[tokio::main]
 async fn main() -> Result<(), HandleError> {
@@ -20,10 +21,10 @@ async fn main() -> Result<(), HandleError> {
     //let gosu_text = String::from_utf8_lossy(&gosu_file);
     //let gosu_json = Arc::new(RwLock::new(serde_json::from_str(&gosu_text).unwrap()));
     
-    let rosu_json = Arc::new(RwLock::new(Gosumemory::default()));
+    let rosu_value = Arc::new(RwLock::new(RosuValues::default()));
 
     let rosu_ws_url = "ws://127.0.0.1:9001/ws".parse().unwrap();
-    let rosu = rosu::Listener::new(rosu_ws_url, rosu_json.clone()).await
+    let rosu = rosu::Listener::new(rosu_ws_url, rosu_value.clone()).await
         .expect("Failed to connect to the gosumemory websocket. Please make sure both gosumemory AND osu! are open.");
     let rosu_handle = tokio::spawn(rosu.listen());
 
@@ -37,7 +38,7 @@ async fn main() -> Result<(), HandleError> {
         }).map(|client: bancho::IrcClient| Some(client))
         .unwrap_or_default();
 
-    let twitch_client = twitch::Client::new(bot_config.twitch, rosu_json, bancho_client);
+    let twitch_client = twitch::Client::new(bot_config.twitch, rosu_value, bancho_client);
     let twitch_handle = tokio::spawn(twitch_client.listen());
 
     let res = tokio::try_join!(flatten(rosu_handle), flatten(twitch_handle));

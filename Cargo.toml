@@ -8,13 +8,16 @@ license = "GPL-3.0-or-later"
 
 [dependencies]
 async-tungstenite = { version = "0.24.0", features = ["tokio", "tokio-runtime"] }
+bitflags = "2.4.1"
 env_logger = "0.10.1"
 futures-util = "0.3.30"
 gosumemory_helper = { git = "https://github.com/Inconn/gosumemory_helper.git", version = "0.1.0" }
 irc = "0.15.0"
 log = "0.4.20"
+rosu-pp = { version = "0.10.0", features = ["async_tokio"] }
 serde = { version = "1.0.193", features = ["derive"] }
 serde_json = "1.0.108"
+serde_repr = "0.1.17"
 tokio = { version = "1.35.1", features = ["full"] }
 toml = "0.8.8"
 twitch-irc = { version = "5.0.1", features = ["refreshing-token-native-tls"] }

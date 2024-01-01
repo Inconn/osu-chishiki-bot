@@ -875,13 +875,16 @@ name = "osu-chishiki-bot"
 version = "0.1.0"
 dependencies = [
  "async-tungstenite",
+ "bitflags 2.4.1",
  "env_logger",
  "futures-util",
  "gosumemory_helper",
  "irc",
  "log",
+ "rosu-pp",
  "serde",
  "serde_json",
+ "serde_repr",
  "tokio",
  "toml 0.8.8",
  "twitch-irc",
@@ -1117,6 +1120,15 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "winreg",
+]
+
+[[package]]
+name = "rosu-pp"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "40f365961f000e9506345a6c57071c23ff983587f24187c0d624bf56a66c1e91"
+dependencies = [
+ "tokio",
 ]
 
 [[package]]

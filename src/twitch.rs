@@ -7,8 +7,10 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio::sync::mpsc::UnboundedReceiver;
 
-use gosumemory_helper::Gosumemory;
+use rosu_pp::{Beatmap, BeatmapExt};
+
 use super::bot_config::TwitchConfig;
+use super::rosu::structs::RosuValues;
 use super::bancho;
 
 //mod auth;
@@ -18,13 +20,13 @@ pub struct Client
     client: Arc<TwitchIRCClient<SecureTCPTransport, StaticLoginCredentials>>,
     bancho_client: Arc<Option<bancho::IrcClient>>,
     twitch_rx: UnboundedReceiver<ServerMessage>,
-    rosu_json: Arc<RwLock<Gosumemory>>,
+    rosu_value: Arc<RwLock<RosuValues>>,
     twitch_config: Arc<TwitchConfig>
 }
 
 impl Client
 {
-    pub fn new(twitch_config: TwitchConfig, rosu_json: Arc<RwLock<Gosumemory>>, bancho_client: Option<bancho::IrcClient>) -> Self {
+    pub fn new(twitch_config: TwitchConfig, rosu_value: Arc<RwLock<RosuValues>>, bancho_client: Option<bancho::IrcClient>) -> Self {
         let config = ClientConfig::new_simple(
             StaticLoginCredentials::new(twitch_config.name.clone(), Some(twitch_config.token.trim_start_matches("oauth:").to_string())));
 
@@ -37,7 +39,7 @@ impl Client
             bancho_client: Arc::new(bancho_client),
             twitch_rx,
             twitch_config: Arc::new(twitch_config),
-            rosu_json
+            rosu_value
         }
     }
 
@@ -46,7 +48,7 @@ impl Client
             log::trace!("got message from twitch!");
             match message {
                 ServerMessage::Privmsg(message) => {
-                    tokio::spawn(Self::process_message(self.client.clone(), self.bancho_client.clone(), message, self.rosu_json.clone(), self.twitch_config.clone()));
+                    tokio::spawn(Self::process_message(self.client.clone(), self.bancho_client.clone(), message, self.rosu_value.clone(), self.twitch_config.clone()));
                 },
                 ServerMessage::Join(join) => {
                     log::info!("Successfully joined channel {} with account {}", join.channel_login, join.user_login);
@@ -57,7 +59,7 @@ impl Client
         Ok(())
    }
 
-    async fn process_message(client: Arc<TwitchIRCClient<SecureTCPTransport, StaticLoginCredentials>>, bancho_client: Arc<Option<bancho::IrcClient>>, message: PrivmsgMessage, rosu_json: Arc<RwLock<Gosumemory>>, twitch_config: Arc<TwitchConfig>) {
+    async fn process_message(client: Arc<TwitchIRCClient<SecureTCPTransport, StaticLoginCredentials>>, bancho_client: Arc<Option<bancho::IrcClient>>, message: PrivmsgMessage, rosu_value: Arc<RwLock<RosuValues>>, twitch_config: Arc<TwitchConfig>) {
         log::trace!("got privmsgmessage that reads \"{}\", id: {}", message.message_text, message.message_id);
         if !message.is_action {
             if let Some(query) = message.message_text.strip_prefix(&twitch_config.prefix) {
@@ -66,44 +68,81 @@ impl Client
                 if let Some(command_name) = queries.next() {
                     let message_to_send = match command_name.to_lowercase().as_str() {
                         "np" | "nowplaying" | "nowplay" | "map" => {
-                            let rosu_json_read = rosu_json.read().await;
-                            format!("osu.ppy.sh/b/{} {} - {} [{}] + {} {}★",
-                                    rosu_json_read.menu.bm.id,
-                                    rosu_json_read.menu.bm.metadata.artist,
-                                    rosu_json_read.menu.bm.metadata.title,
-                                    rosu_json_read.menu.bm.metadata.difficulty,
-                                    rosu_json_read.menu.mods.str,
-                                    rosu_json_read.menu.bm.stats.full_sr
+                            let rosu_value_read = rosu_value.read().await;
+                            let mods_str: String = rosu_value_read.mods_str.iter().map(|item: &String| item.as_str()).collect();
+                            format!("osu.ppy.sh/b/{} {} - {} [{}] + {} {:.2}★",
+                                    rosu_value_read.map_id,
+                                    rosu_value_read.artist,
+                                    rosu_value_read.title,
+                                    rosu_value_read.difficulty,
+                                    mods_str,
+                                    rosu_value_read.stars_mods
                                     )
                         }
                         "nppp" | "nowplayingpp" | "nowplaypp" | "mappp" => {
-                            let rosu_json_read = rosu_json.read().await;
-                            format!("osu.ppy.sh/b/{} {} - {} [{}] + {} {}★ | 100%: {}pp | 99%: {}pp | 98%: {}pp | 97%: {}pp | 96%: {}pp | 95%: {}pp",
-                                    rosu_json_read.menu.bm.id,
-                                    rosu_json_read.menu.bm.metadata.artist,
-                                    rosu_json_read.menu.bm.metadata.title,
-                                    rosu_json_read.menu.bm.metadata.difficulty,
-                                    rosu_json_read.menu.mods.str,
-                                    rosu_json_read.menu.bm.stats.full_sr,
-                                    rosu_json_read.menu.pp.n100,
-                                    rosu_json_read.menu.pp.n99,
-                                    rosu_json_read.menu.pp.n98,
-                                    rosu_json_read.menu.pp.n97,
-                                    rosu_json_read.menu.pp.n96,
-                                    rosu_json_read.menu.pp.n95
+                            let rosu_value_read = rosu_value.read().await;
+                            let mods_str: String = rosu_value_read.mods_str.iter().map(|item: &String| item.as_str()).collect();
+
+                            let beatmap = Beatmap::from_path(rosu_value_read.beatmap_full_path.clone()).await.unwrap().convert_mode(rosu_value_read.mode.into()).into_owned();
+                            // TODO: simply this, it feels too big
+                            let mut pp = [0.0; 5];
+                            pp[0] = rosu_value_read.ss_pp;
+                            let attr = if pp[0] == 0.0 {
+                                let attr_temp = beatmap.max_pp(rosu_value_read.menu_mods.bits());
+                                pp[0] = attr_temp.pp();
+                                pp[1] = beatmap.pp()
+                                    .attributes(attr_temp.clone())
+                                    .accuracy(99.)
+                                    .calculate()
+                                    .pp();
+
+                                Some(attr_temp)
+                            }
+                            else {
+                                let attr_temp = beatmap.pp()
+                                    .mods(rosu_value_read.menu_mods.bits())
+                                    .accuracy(99.)
+                                    .calculate();
+
+                                pp[1] = attr_temp.pp();
+                                Some(attr_temp)
+                            };
+
+                            let attr = attr.unwrap();
+                            for i in 2..pp.len() {
+                                pp[i] = beatmap.pp()
+                                    .attributes(attr.clone())
+                                    .accuracy((100 - i) as f64)
+                                    .calculate()
+                                    .pp();
+                            }
+
+                            format!("osu.ppy.sh/b/{} {} - {} [{}] + {} {:.2}★ | 100%: {:.0}pp | 99%: {:.0}pp | 98%: {:.0}pp | 97%: {:.0}pp | 96%: {:.0}pp | 95%: {:.0}pp",
+                                    rosu_value_read.map_id,
+                                    rosu_value_read.artist,
+                                    rosu_value_read.title,
+                                    rosu_value_read.difficulty,
+                                    mods_str,
+                                    rosu_value_read.stars_mods,
+                                    pp[0],
+                                    pp[1],
+                                    pp[2],
+                                    pp[3],
+                                    pp[4],
+                                    pp[5]
                                     )
                         }
                         "rq" | "req" | "request" => {
                             if let Some(ref bancho_client) =  *bancho_client {
-                                let rosu_json_read = rosu_json.read().await;
+                                let rosu_value_read = rosu_value.read().await;
                                 let beatmap_id = queries.next().unwrap();
                                 // this is wrong, TODO: Fix this
                                 // requires using osu api
-                                let beatmap_name = format!("{} - {} [{}] {}★",
-                                                           rosu_json_read.menu.bm.metadata.artist,
-                                                           rosu_json_read.menu.bm.metadata.title,
-                                                           rosu_json_read.menu.bm.metadata.difficulty,
-                                                           rosu_json_read.menu.bm.stats.full_sr
+                                let beatmap_name = format!("{} - {} [{}] {:.2}★",
+                                                           rosu_value_read.artist,
+                                                           rosu_value_read.title,
+                                                           rosu_value_read.difficulty,
+                                                           rosu_value_read.stars_mods
                                                            );
                                 let _ = bancho_client.send_request(
                                     beatmap_id,
@@ -111,7 +150,7 @@ impl Client
                                     queries.next().unwrap_or_default()
                                     ).await;
                                 
-                                format!("Added request {beatmap_name} osu.ppy.sh/b/{}", rosu_json_read.menu.bm.id)
+                                format!("Added request {beatmap_name} osu.ppy.sh/b/{}", rosu_value_read.map_id)
                             }
                             else {
                                 String::new()
